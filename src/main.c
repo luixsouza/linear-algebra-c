@@ -4,7 +4,6 @@
 #include "parser.h"
 #include "io_utils.h"
 
-// === Leitura simplificada de matriz e vetor ===
 static Matrix read_matrix() {
     size_t m, n;
     printf("Linhas Colunas: ");
@@ -23,7 +22,6 @@ static Vector read_vector_input(size_t n) {
     return v;
 }
 
-// === Funções minimalistas ===
 static void solve_from_console() {
     Matrix A = read_matrix();
     Vector b = read_vector_input(A.rows);
@@ -78,9 +76,8 @@ static void solve_from_file() {
     mat_free(&A); vec_free(&b); vec_free(&x);
 }
 
-// === Menu visual ===
 static void menu() {
-    printf("\n==== Álgebra Linear em C ====\n");
+    printf("\n==== Algebra Linear ====\n");
     printf("1) Resolver sistema linear\n");
     printf("2) Verificar injetividade/sobrejetividade/bijetividade\n");
     printf("3) Verificar se um conjunto forma base\n");
@@ -96,7 +93,7 @@ int main() {
     while (1) {
         menu();
         if (scanf("%d", &op) != 1) break;
-        int c; while ((c = getchar()) != '\n' && c != EOF) {} // limpa buffer
+        int c; while ((c = getchar()) != '\n' && c != EOF) {}
         switch (op) {
             case 1: solve_from_console(); break;
             case 2: check_transform(); break;

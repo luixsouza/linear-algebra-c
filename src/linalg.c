@@ -58,7 +58,6 @@ void vec_print(const Vector *v, const char *name){
     printf("]\n");
 }
 
-// Basic ops
 Matrix mat_mul(const Matrix *A, const Matrix *B){
     Matrix C=mat_create(A->rows, B->cols);
     for(size_t i=0;i<A->rows;i++){
@@ -97,7 +96,6 @@ Matrix mat_transpose(const Matrix *A){
     return T;
 }
 
-// RREF (Gauss-Jordan)
 int mat_rref(Matrix *A, double eps){
     size_t lead=0;
     for(size_t r=0; r<A->rows; r++){
@@ -110,7 +108,6 @@ int mat_rref(Matrix *A, double eps){
                 if(lead==A->cols) return 0;
             }
         }
-        // swap rows r and i
         if(i!=r){
             for(size_t j=0;j<A->cols;j++){
                 double tmp=mat_get(A,r,j);
@@ -168,7 +165,6 @@ double mat_det_3x3(const Matrix *A){
     return a*(e*i - f*h) - b*(d*i - f*g) + c*(d*h - e*g);
 }
 
-// Solve Ax=b
 LinearSystemSolution solve_linear_system(const Matrix *Ain, const Vector *b, double eps){
     LinearSystemSolution S;
     S.type=SYS_UNIQUE;
@@ -176,7 +172,6 @@ LinearSystemSolution solve_linear_system(const Matrix *Ain, const Vector *b, dou
     S.x=vec_create(Ain->cols);
     S.nullspace_basis=mat_create(Ain->cols, 0);
 
-    // Build augmented [A|b]
     Matrix Ab = mat_create(Ain->rows, Ain->cols+1);
     for(size_t i=0;i<Ain->rows;i++){
         for(size_t j=0;j<Ain->cols;j++) mat_set(&Ab,i,j, mat_get(Ain,i,j));
@@ -191,7 +186,6 @@ LinearSystemSolution solve_linear_system(const Matrix *Ain, const Vector *b, dou
 
     mat_rref(&Ab, eps);
 
-    // Analyze RREF
     size_t m=Ab.rows, n=Ain->cols;
     int inconsistent=0;
     for(size_t i=0;i<m;i++){
@@ -207,12 +201,10 @@ LinearSystemSolution solve_linear_system(const Matrix *Ain, const Vector *b, dou
         return S;
     }
 
-    // Identify pivot columns and free variables
     int *pivot_col = (int*)malloc(n*sizeof(int));
     for(size_t j=0;j<n;j++) pivot_col[j]=-1;
     size_t row=0;
     for(size_t col=0; col<n && row<m; col++){
-        // find leading 1 in this column
         size_t rlead = (size_t)-1;
         for(size_t i=row;i<m;i++){
             if(nearly_zero(mat_get(&Ab,i,col)-1.0, 1e-7)){
@@ -224,7 +216,6 @@ LinearSystemSolution solve_linear_system(const Matrix *Ain, const Vector *b, dou
             row=rlead+1;
         }
     }
-    // Set particular solution (free vars = 0)
     for(size_t j=0;j<n;j++) S.x.data[j]=0.0;
     for(size_t j=0;j<n;j++){
         if(pivot_col[j]>=0){
@@ -232,7 +223,6 @@ LinearSystemSolution solve_linear_system(const Matrix *Ain, const Vector *b, dou
         }
     }
 
-    // Build nullspace basis from free variables
     size_t free_count=0;
     for(size_t j=0;j<n;j++) if(pivot_col[j]<0) free_count++;
     if(free_count>0){
@@ -240,10 +230,8 @@ LinearSystemSolution solve_linear_system(const Matrix *Ain, const Vector *b, dou
         size_t k=0;
         for(size_t j=0;j<n;j++){
             if(pivot_col[j]<0){
-                // Basis vector corresponding to free var j
                 for(size_t t=0;t<n;t++) mat_set(&N,t,k, 0.0);
                 mat_set(&N,j,k, 1.0);
-                // For pivot variables: x_pivot = - sum (A_pivot,free * freevar)
                 for(size_t pcol=0;pcol<n;pcol++){
                     if(pivot_col[pcol]>=0){
                         double coeff = -mat_get(&Ab, pivot_col[pcol], j);
@@ -284,15 +272,12 @@ int forms_basis(const Matrix *V, double eps){
     return r == V->rows;
 }
 
-// QR decomposition via classical Gram-Schmidt
 static void qr_decompose(const Matrix *A, Matrix *Q, Matrix *R, double eps){
     size_t m=A->rows, n=A->cols;
     *Q = mat_create(m,n);
     *R = mat_create(n,n);
-    // Copy columns of A into Q (temporary)
     for(size_t j=0;j<n;j++){
         for(size_t i=0;i<m;i++) mat_set(Q,i,j, mat_get(A,i,j));
-        // subtract projections
         for(size_t k=0;k<j;k++){
             double r=0.0;
             for(size_t i=0;i<m;i++) r += mat_get(Q,i,k)*mat_get(A,i,j);
@@ -300,7 +285,6 @@ static void qr_decompose(const Matrix *A, Matrix *Q, Matrix *R, double eps){
             for(size_t i=0;i<m;i++)
                 mat_set(Q,i,j, mat_get(Q,i,j) - r*mat_get(Q,i,k));
         }
-        // normalize
         double norm=0.0;
         for(size_t i=0;i<m;i++){ double v=mat_get(Q,i,j); norm+=v*v; }
         norm = sqrt(norm);
@@ -315,7 +299,6 @@ static void qr_decompose(const Matrix *A, Matrix *Q, Matrix *R, double eps){
 }
 
 Vector eigenvalues_qr(const Matrix *Ain, size_t max_iters, double eps){
-    // Works best for symmetric. For small 2x2/3x3 generic matrices it's OK.
     Matrix A = mat_copy(Ain);
     for(size_t it=0; it<max_iters; it++){
         Matrix Q,R;
@@ -336,7 +319,6 @@ Matrix eigenvectors_for_lambda(const Matrix *A, double lambda, double eps){
     for(size_t i=0;i<M.rows;i++) mat_set(&M,i,i, mat_get(&M,i,i)-lambda);
     Matrix R = mat_copy(&M);
     mat_rref(&R, eps);
-    // nullspace basis of (A - λI)
     size_t m=R.rows, n=R.cols;
     int *pivot = (int*)malloc(n*sizeof(int));
     for(size_t j=0;j<n;j++) pivot[j]=-1;
@@ -351,7 +333,6 @@ Matrix eigenvectors_for_lambda(const Matrix *A, double lambda, double eps){
     size_t free_count=0; for(size_t j=0;j<n;j++) if(pivot[j]<0) free_count++;
     Matrix N = mat_create(n, free_count>0?free_count:1);
     if(free_count==0){
-        // numeric fallback: smallest singular vector approx; here just put zeros
         for(size_t i=0;i<n;i++) mat_set(&N,i,0, 0.0);
     }else{
         size_t k=0;
@@ -378,15 +359,12 @@ int diagonalize(const Matrix *A, Matrix *P_out, Matrix *D_out, double eps, size_
     if(A->rows != A->cols) return 0;
     size_t n=A->rows;
     Vector evals = eigenvalues_qr(A, max_iters, eps);
-    // Build eigenvector matrix
     Matrix P = mat_create(n,n);
     for(size_t j=0;j<n;j++){
         Matrix V = eigenvectors_for_lambda(A, evals.data[j], eps);
-        // take first vector
         for(size_t i=0;i<n;i++) mat_set(&P,i,j, mat_get(&V,i,0));
         mat_free(&V);
     }
-    // Check if P has full rank
     size_t r = mat_rank(&P, eps);
     if(r<n){
         vec_free(&evals);
