@@ -1,0 +1,46 @@
+# Álgebra Linear em C
+
+Este projeto foi desenvolvido como parte das disciplinas de **Álgebra Linear** e **Algoritmos e Técnicas de Programação II** no **IFG - Campus Inhumas**.  
+O objetivo é fornecer uma ferramenta prática e interativa para explorar conceitos de álgebra linear. 
+
+---
+
+## Funcionalidades
+
+- Sistemas Lineares: resolução de sistemas da forma `Ax = b` usando o método de eliminação de Gauss-Jordan.  
+- Análise de Matrizes: cálculo do posto e verificação se uma transformação linear é **injetiva, sobrejetiva ou bijetiva**.  
+- Autovalores e Autovetores: obtenção por meio do **método de iteração QR**.  
+- Parser de Equações: leitura de sistemas diretamente de arquivos de texto, simplificando a entrada de dados.  
+
+---
+
+## Estrutura do Projeto
+
+- `linalg.h` e `linalg.c`: núcleo do projeto, contendo as estruturas e funções matemáticas.  
+- `parser.h` e `parser.c`: interpretação de equações em texto para matrizes e vetores.  
+- `main.c`: ponto de entrada, responsável pelo menu principal e interação com o usuário.  
+
+---
+
+## Como Compilar
+
+É necessário ter **GCC** e **make** instalados.  
+No diretório raiz do projeto, execute:
+
+```bash
+make
+```
+
+O comando irá gerar a pasta `build/` contendo o executável `algebra_linear`.  
+
+---
+
+## Como Executar
+
+Após a compilação, rode o programa com:
+
+```bash
+./build/algebra_linear
+```
+
+Você será guiado por um menu interativo, explorando todas as funcionalidades do sistema.
