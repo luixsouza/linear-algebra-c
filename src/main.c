@@ -4,6 +4,8 @@
 #include "parser.h"
 #include "io_utils.h"
 
+#define EPS 1e-9
+
 static Matrix read_matrix() {
     size_t m, n;
     printf("Linhas Colunas: ");
@@ -25,16 +27,30 @@ static Vector read_vector_input(size_t n) {
 static void solve_from_console() {
     Matrix A = read_matrix();
     Vector b = read_vector_input(A.rows);
-    Vector x = gauss_jordan(A, b);
-    for (size_t i = 0; i < x.size; i++) printf("%.6lf ", x.data[i]);
-    printf("\n");
-    mat_free(&A); vec_free(&b); vec_free(&x);
+    LinearSystemSolution sol = solve_linear_system(&A, &b, EPS);
+    
+    printf("Tipo da Solucao: ");
+    if (sol.type == SYS_UNIQUE) {
+        printf("Unica\n");
+        vec_print(&sol.x, "x");
+    } else if (sol.type == SYS_INFINITE) {
+        printf("Infinita\n");
+        vec_print(&sol.x, "Solucao Particular");
+        mat_print(&sol.nullspace_basis, "Base do Espaco Nulo");
+    } else {
+        printf("Inconsistente\n");
+    }
+
+    mat_free(&A);
+    vec_free(&b);
+    vec_free(&sol.x);
+    mat_free(&sol.nullspace_basis);
 }
 
 static void check_transform() {
     Matrix A = read_matrix();
-    int inj = is_injective(A);
-    int surj = is_surjective(A);
+    int inj = is_injective(&A, EPS);
+    int surj = is_surjective(&A, EPS);
     if (inj && surj) printf("Bijetiva\n");
     else if (inj) printf("Injetiva\n");
     else if (surj) printf("Sobrejetiva\n");
@@ -44,41 +60,71 @@ static void check_transform() {
 
 static void check_basis() {
     Matrix A = read_matrix();
-    printf("%s\n", is_basis(A) ? "Forma base" : "Não forma base");
+    printf("%s\n", forms_basis(&A, EPS) ? "Forma base" : "Nao forma base");
     mat_free(&A);
 }
 
 static void eigen() {
     Matrix A = read_matrix();
-    Vector vals = eigenvalues(A);
-    for (size_t i = 0; i < vals.size; i++) printf("%.6lf ", vals.data[i]);
+    Vector vals = eigenvalues_qr(&A, 1000, EPS);
+    
+    printf("Autovalores: ");
+    for (size_t i = 0; i < vals.n; i++) printf("%.6lf ", vals.data[i]);
     printf("\n");
-    mat_free(&A); vec_free(&vals);
+
+    mat_free(&A);
+    vec_free(&vals);
 }
 
 static void diag() {
     Matrix A = read_matrix();
-    Matrix D = diagonalize(A);
-    for (size_t i = 0; i < D.rows; i++) {
-        for (size_t j = 0; j < D.cols; j++)
-            printf("%.6lf ", mat_at(&D, i, j)[0]);
-        printf("\n");
+    Matrix P, D;
+    if (diagonalize(&A, &P, &D, EPS, 1000)) {
+        printf("Matriz P (Autovetores):\n");
+        mat_print(&P, NULL);
+        printf("\nMatriz D (Autovalores):\n");
+        mat_print(&D, NULL);
+        mat_free(&P);
+        mat_free(&D);
+    } else {
+        printf("A matriz nao pode ser diagonalizada.\n");
     }
-    mat_free(&A); mat_free(&D);
+    mat_free(&A);
 }
 
 static void solve_from_file() {
-    Matrix A; Vector b;
-    read_system_from_file(&A, &b);
-    Vector x = gauss_jordan(A, b);
-    for (size_t i = 0; i < x.size; i++) printf("%.6lf ", x.data[i]);
-    printf("\n");
-    mat_free(&A); vec_free(&b); vec_free(&x);
+    char filepath[256];
+    printf("Digite o caminho do arquivo: ");
+    scanf("%s", filepath);
+
+    ParsedSystem ps = parse_from_file(filepath, NULL);
+    if (ps.vars == NULL) {
+        printf("Erro ao ler o arquivo ou arquivo vazio.\n");
+        return;
+    }
+
+    LinearSystemSolution sol = solve_linear_system(&ps.A, &ps.b, EPS);
+    
+    printf("Tipo da Solucao: ");
+    if (sol.type == SYS_UNIQUE) {
+        printf("Unica\n");
+        vec_print(&sol.x, "x");
+    } else if (sol.type == SYS_INFINITE) {
+        printf("Infinita\n");
+        vec_print(&sol.x, "Solucao Particular");
+        mat_print(&sol.nullspace_basis, "Base do Espaco Nulo");
+    } else {
+        printf("Inconsistente\n");
+    }
+
+    free_parsed_system(&ps);
+    vec_free(&sol.x);
+    mat_free(&sol.nullspace_basis);
 }
 
 static void menu() {
     printf("\n==== Algebra Linear ====\n");
-    printf("1) Resolver sistema linear\n");
+    printf("1) Resolver sistema linear (Console)\n");
     printf("2) Verificar injetividade/sobrejetividade/bijetividade\n");
     printf("3) Verificar se um conjunto forma base\n");
     printf("4) Autovalores\n");
@@ -102,7 +148,7 @@ int main() {
             case 5: diag(); break;
             case 6: solve_from_file(); break;
             case 0: return 0;
-            default: printf("Opção inválida\n"); break;
+            default: printf("Opcao invalida\n"); break;
         }
     }
     return 0;
